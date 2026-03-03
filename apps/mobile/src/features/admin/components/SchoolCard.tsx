@@ -21,6 +21,8 @@ export interface SchoolCardProps {
   school: AdminSchool;
   /** Called when the card header is pressed. */
   onPress?: (school: AdminSchool) => void;
+  /** Called when "Add class" is pressed. */
+  onAddClass?: (school: AdminSchool) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -35,7 +37,7 @@ export interface SchoolCardProps {
  * <SchoolCard school={school} onPress={navigateToSchool} />
  * ```
  */
-export function SchoolCard({ school, onPress }: SchoolCardProps) {
+export function SchoolCard({ school, onPress, onAddClass }: SchoolCardProps) {
   const [expanded, setExpanded] = useState(false);
   const rotation = useSharedValue(0);
 
@@ -100,6 +102,19 @@ export function SchoolCard({ school, onPress }: SchoolCardProps) {
           label="Teachers"
         />
       </View>
+
+      {/* Add class button */}
+      <Pressable
+        onPress={() => onAddClass?.(school)}
+        style={styles.addClassButton}
+        accessibilityRole="button"
+        accessibilityLabel="Add class to this school"
+      >
+        <Ionicons name="add-circle-outline" size={18} color={colors.primary.amber} />
+        <Text variant="bodySmallBold" color={colors.primary.amber}>
+          Add class
+        </Text>
+      </Pressable>
 
       {/* Expandable toggle */}
       {school.classes.length > 0 && (
@@ -213,6 +228,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
     borderRadius: 8,
+  },
+  addClassButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xs,
+    borderRadius: 8,
+    backgroundColor: colors.primary.amber + '15',
   },
   expandToggle: {
     flexDirection: 'row',

@@ -25,8 +25,11 @@ export interface UploadUrlResponse {
 // API Functions
 // ---------------------------------------------------------------------------
 
+const PHOTOS_BUCKET = 'photos';
+
 /**
- * Request a presigned S3 upload URL from the backend.
+ * Request a photo slot from the backend (Supabase Storage). Returns photoId and
+ * storage path; the app then uploads the file via uploadPhotoToSupabaseStorage.
  */
 export async function requestUploadUrl(data: UploadUrlRequest): Promise<UploadUrlResponse> {
   return apiRequest<UploadUrlResponse>('/photos/upload-url', {
@@ -36,8 +39,27 @@ export async function requestUploadUrl(data: UploadUrlRequest): Promise<UploadUr
 }
 
 /**
- * Confirm that the upload to S3 has completed and the photo record can be
- * marked as available.
+ * Upload file to Supabase Storage. Call after requestUploadUrl; then call confirmUpload.
+ */
+export async function uploadPhotoToSupabaseStorage(
+  storagePath: string,
+  localUri: string,
+  contentType: string,
+): Promise<void> {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+  const { error } = await supabase.storage.from(PHOTOS_BUCKET).upload(storagePath, blob, {
+    contentType,
+    upsert: true,
+  });
+  if (error) {
+    logger.error('Supabase Storage upload failed', { error: error.message, storagePath });
+    throw error;
+  }
+}
+
+/**
+ * Confirm that the upload to Supabase Storage has completed and the photo is ready.
  */
 export async function confirmUpload(photoId: string): Promise<void> {
   await apiRequest(`/photos/${photoId}/confirm`, {

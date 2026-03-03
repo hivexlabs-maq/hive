@@ -1,11 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
-import { HeadObjectCommand } from '@aws-sdk/client-s3';
 import { supabaseAdmin } from '../config/supabase';
-import { s3Client, s3Bucket } from '../config/s3';
 import { logger } from '../config/logger';
-import { generateUploadUrl, generateViewUrl } from '../utils/signedUrl';
 import { AppError } from '../middleware/errorHandler';
-import { imageProcessingQueue } from '../jobs/imageProcessor.job';
+import {
+  getSupabasePhotoPublicUrl,
+  fileExistsInStorage,
+} from '../utils/supabaseStorage';
 import type { RequestUploadInput, GetPhotosInput } from '../validators/photo.validator';
 
 const CONTENT_TYPE_TO_EXT: Record<string, string> = {
@@ -93,25 +93,22 @@ export async function requestUpload(
     );
   }
 
-  // 4. Generate S3 key
+  // 4. Generate storage path (Supabase Storage)
   const ext = CONTENT_TYPE_TO_EXT[data.contentType] ?? 'jpg';
   const photoId = uuidv4();
-  const s3Key = `photos/${schoolId}/${data.classId}/${photoId}.${ext}`;
+  const storagePath = `photos/${schoolId}/${data.classId}/${photoId}.${ext}`;
 
-  // 5. Generate presigned upload URL
-  const uploadUrl = await generateUploadUrl(s3Key, data.contentType);
-
-  // 6. Create photo record
+  // 5. Create photo record (app will upload file to Supabase Storage)
   const { error: insertError } = await supabaseAdmin.from('photos').insert({
     id: photoId,
-    s3_key: s3Key,
+    s3_key: storagePath,
     class_id: data.classId,
     school_id: schoolId,
     uploaded_by: userId,
     status: 'processing',
-    filename: data.filename,
-    content_type: data.contentType,
-    file_size: data.fileSize,
+    original_filename: data.filename,
+    mime_type: data.contentType,
+    file_size_bytes: data.fileSize,
     sha256_hash: data.sha256Hash,
   });
 
@@ -123,9 +120,9 @@ export async function requestUpload(
     throw new AppError('Failed to create photo record', 500, 'INSERT_FAILED');
   }
 
-  logger.info('Upload requested', { photoId, s3Key, userId });
+  logger.info('Upload requested (Supabase Storage)', { photoId, storagePath, userId });
 
-  return { photoId, uploadUrl, s3Key };
+  return { photoId, uploadUrl: '', s3Key: storagePath };
 }
 
 export async function confirmUpload(photoId: string): Promise<void> {
@@ -148,15 +145,9 @@ export async function confirmUpload(photoId: string): Promise<void> {
     );
   }
 
-  // 2. Verify photo exists in S3
-  try {
-    await s3Client.send(
-      new HeadObjectCommand({
-        Bucket: s3Bucket,
-        Key: photo.s3_key,
-      }),
-    );
-  } catch {
+  // 2. Verify photo exists in Supabase Storage
+  const exists = await fileExistsInStorage(photo.s3_key);
+  if (!exists) {
     throw new AppError(
       'Photo file not found in storage. Please upload the file first.',
       404,
@@ -164,19 +155,18 @@ export async function confirmUpload(photoId: string): Promise<void> {
     );
   }
 
-  // 3. Queue image processing job
-  await (imageProcessingQueue as any).add(
-    'process-image',
-    { photoId, s3Key: photo.s3_key },
-    {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
-      removeOnComplete: true,
-      removeOnFail: false,
-    },
-  );
+  // 3. Mark as ready (no server-side thumbnail for now; thumbnail_s3_key stays null)
+  const { error: updateError } = await supabaseAdmin
+    .from('photos')
+    .update({ status: 'ready', updated_at: new Date().toISOString() })
+    .eq('id', photoId);
 
-  logger.info('Upload confirmed, processing queued', { photoId });
+  if (updateError) {
+    logger.error('Failed to confirm photo', { error: updateError.message, photoId });
+    throw new AppError('Failed to confirm upload', 500, 'UPDATE_FAILED');
+  }
+
+  logger.info('Upload confirmed (Supabase Storage)', { photoId });
 }
 
 export async function tagStudents(
@@ -296,17 +286,14 @@ export async function getPhotosByClass(
   const hasNext = (photos?.length ?? 0) > limit;
   const results = photos?.slice(0, limit) ?? [];
 
-  // Generate signed URLs
-  const photosWithUrls: PhotoWithUrl[] = await Promise.all(
-    results.map(async (photo) => {
-      const url = await generateViewUrl(photo.s3_key);
-      const thumbnailUrl = photo.thumbnail_s3_key
-        ? await generateViewUrl(photo.thumbnail_s3_key)
-        : null;
-
-      return { ...photo, url, thumbnailUrl };
-    }),
-  );
+  // Supabase Storage public URLs
+  const photosWithUrls: PhotoWithUrl[] = results.map((photo) => {
+    const url = getSupabasePhotoPublicUrl(photo.s3_key);
+    const thumbnailUrl = photo.thumbnail_s3_key
+      ? getSupabasePhotoPublicUrl(photo.thumbnail_s3_key)
+      : null;
+    return { ...photo, url, thumbnailUrl };
+  });
 
   const nextCursor = hasNext && results.length > 0
     ? Buffer.from(
@@ -395,29 +382,26 @@ export async function getParentFeed(
   const hasNext = uniquePhotos.length > limit;
   const results = uniquePhotos.slice(0, limit);
 
-  const photosWithUrls: PhotoWithUrl[] = await Promise.all(
-    results.map(async (photo) => {
-      const url = await generateViewUrl(photo.s3_key as string);
-      const thumbnailUrl = photo.thumbnail_s3_key
-        ? await generateViewUrl(photo.thumbnail_s3_key as string)
-        : null;
-
-      return {
-        id: photo.id as string,
-        s3_key: photo.s3_key as string,
-        thumbnail_s3_key: photo.thumbnail_s3_key as string | null,
-        blurhash: photo.blurhash as string | null,
-        width: photo.width as number | null,
-        height: photo.height as number | null,
-        status: photo.status as string,
-        created_at: photo.created_at as string,
-        uploaded_by: photo.uploaded_by as string,
-        class_id: photo.class_id as string,
-        url,
-        thumbnailUrl,
-      };
-    }),
-  );
+  const photosWithUrls: PhotoWithUrl[] = results.map((photo) => {
+    const url = getSupabasePhotoPublicUrl(photo.s3_key as string);
+    const thumbnailUrl = photo.thumbnail_s3_key
+      ? getSupabasePhotoPublicUrl(photo.thumbnail_s3_key as string)
+      : null;
+    return {
+      id: photo.id as string,
+      s3_key: photo.s3_key as string,
+      thumbnail_s3_key: photo.thumbnail_s3_key as string | null,
+      blurhash: photo.blurhash as string | null,
+      width: photo.width as number | null,
+      height: photo.height as number | null,
+      status: photo.status as string,
+      created_at: photo.created_at as string,
+      uploaded_by: photo.uploaded_by as string,
+      class_id: photo.class_id as string,
+      url,
+      thumbnailUrl,
+    };
+  });
 
   const nextCursor =
     hasNext && results.length > 0

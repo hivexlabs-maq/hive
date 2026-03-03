@@ -8,6 +8,7 @@ import { logger } from '@/utils/logger';
 import { MAX_UPLOAD_IMAGES } from '@/theme';
 import {
   requestUploadUrl,
+  uploadPhotoToSupabaseStorage,
   confirmUpload,
   tagStudents,
 } from '@/features/teacher/services/teacherService';
@@ -193,24 +194,12 @@ export function useUpload(): UseUploadReturn {
         );
         updateImage(id, { photoId, s3Key, progress: 0.3 });
 
-        // Step 3: Upload blob to presigned URL
+        // Step 3: Upload to Supabase Storage
         updateImage(id, { state: 'uploading', progress: 0.35 });
-        await retryWithBackoff(async () => {
-          const response = await fetch(uri);
-          const blob = await response.blob();
-
-          const uploadResponse = await fetch(uploadUrl, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': contentType,
-            },
-            body: blob,
-          });
-
-          if (!uploadResponse.ok) {
-            throw new Error(`Upload failed with status ${uploadResponse.status}`);
-          }
-        }, RETRY_OPTIONS);
+        await retryWithBackoff(
+          () => uploadPhotoToSupabaseStorage(s3Key, uri, contentType),
+          RETRY_OPTIONS,
+        );
         updateImage(id, { progress: 0.7 });
 
         // Step 4: Confirm upload

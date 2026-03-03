@@ -53,6 +53,12 @@ export interface CreateSchoolData {
   phone?: string;
 }
 
+export interface CreateClassData {
+  name: string;
+  grade?: string;
+  academicYear?: string;
+}
+
 // ---------------------------------------------------------------------------
 // API Functions
 // ---------------------------------------------------------------------------
@@ -127,4 +133,18 @@ export async function createSchool(
     method: 'POST',
     body: data,
   });
+}
+
+/**
+ * Create a new class for a school. Admin only.
+ */
+export async function createClass(
+  schoolId: string,
+  data: CreateClassData,
+): Promise<{ id: string; name: string; grade: string | null; school_id: string }> {
+  const res = await apiRequest<{
+    success: true;
+    data: { id: string; name: string; grade: string | null; school_id: string };
+  }>(`/schools/${schoolId}/classes`, { method: 'POST', body: data });
+  return res.data;
 }

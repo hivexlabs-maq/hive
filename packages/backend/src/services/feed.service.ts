@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '../config/supabase';
 import { logger } from '../config/logger';
-import { generateViewUrl } from '../utils/signedUrl';
+import { getSupabasePhotoPublicUrl } from '../utils/supabaseStorage';
 import { AppError } from '../middleware/errorHandler';
 
 interface FeedPhoto {
@@ -121,22 +121,19 @@ export async function getFeed(
   const hasNext = (photos?.length ?? 0) > limit;
   const results = photos?.slice(0, limit) ?? [];
 
-  // 4. Generate signed view URLs for each photo
-  const feedPhotos: FeedPhoto[] = await Promise.all(
-    results.map(async (photo) => {
-      const url = await generateViewUrl(photo.s3_key);
-      const thumbnailUrl = photo.thumbnail_s3_key
-        ? await generateViewUrl(photo.thumbnail_s3_key)
-        : null;
-
-      return {
-        ...photo,
-        url,
-        thumbnailUrl,
-        taggedStudentIds: photoStudentMap.get(photo.id) ?? [],
-      };
-    }),
-  );
+  // 4. Supabase Storage public URLs for each photo
+  const feedPhotos: FeedPhoto[] = results.map((photo) => {
+    const url = getSupabasePhotoPublicUrl(photo.s3_key);
+    const thumbnailUrl = photo.thumbnail_s3_key
+      ? getSupabasePhotoPublicUrl(photo.thumbnail_s3_key)
+      : null;
+    return {
+      ...photo,
+      url,
+      thumbnailUrl,
+      taggedStudentIds: photoStudentMap.get(photo.id) ?? [],
+    };
+  });
 
   // 5. Build next cursor
   const nextCursor =

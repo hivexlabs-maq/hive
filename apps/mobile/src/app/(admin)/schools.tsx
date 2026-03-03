@@ -15,8 +15,13 @@ import { HeaderBar } from '@/components/navigation/HeaderBar';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { SchoolCard } from '@/features/admin/components/SchoolCard';
 import { AddSchoolSheet } from '@/features/admin/components/AddSchoolSheet';
+import { AddClassSheet } from '@/features/admin/components/AddClassSheet';
 import { useAdminSchools } from '@/features/admin/hooks/useAdminSchools';
-import type { AdminSchool, CreateSchoolData } from '@/features/admin/services/adminService';
+import type {
+  AdminSchool,
+  CreateSchoolData,
+  CreateClassData,
+} from '@/features/admin/services/adminService';
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -37,10 +42,13 @@ export default function SchoolsScreen() {
     refetch,
     createSchool,
     isCreating,
+    createClass,
+    isCreatingClass,
   } = useAdminSchools();
 
-  // ── Add sheet state ───────────────────────────────────────────────
+  // ── Add school / add class sheet state ─────────────────────────────
   const [addSheetVisible, setAddSheetVisible] = useState(false);
+  const [addClassSchool, setAddClassSchool] = useState<AdminSchool | null>(null);
 
   const handleAddPress = useCallback(() => {
     setAddSheetVisible(true);
@@ -58,6 +66,23 @@ export default function SchoolsScreen() {
     [createSchool],
   );
 
+  const handleAddClassPress = useCallback((school: AdminSchool) => {
+    setAddClassSchool(school);
+  }, []);
+
+  const handleAddClassClose = useCallback(() => {
+    setAddClassSchool(null);
+  }, []);
+
+  const handleAddClassSubmit = useCallback(
+    async (data: CreateClassData) => {
+      if (!addClassSchool) return;
+      await createClass(addClassSchool.id, data);
+      setAddClassSchool(null);
+    },
+    [addClassSchool, createClass],
+  );
+
   // ── List handlers ─────────────────────────────────────────────────
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -67,9 +92,12 @@ export default function SchoolsScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: AdminSchool }) => (
-      <SchoolCard school={item} />
+      <SchoolCard
+        school={item}
+        onAddClass={handleAddClassPress}
+      />
     ),
-    [],
+    [handleAddClassPress],
   );
 
   const renderSeparator = useCallback(
@@ -142,6 +170,15 @@ export default function SchoolsScreen() {
         onClose={handleAddClose}
         onSubmit={handleAddSubmit}
         isSubmitting={isCreating}
+      />
+
+      {/* Add class sheet */}
+      <AddClassSheet
+        isVisible={!!addClassSchool}
+        schoolName={addClassSchool?.name ?? ''}
+        onClose={handleAddClassClose}
+        onSubmit={handleAddClassSubmit}
+        isSubmitting={isCreatingClass}
       />
     </ScreenContainer>
   );

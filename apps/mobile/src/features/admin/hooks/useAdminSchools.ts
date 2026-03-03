@@ -9,8 +9,10 @@ import { STALE_TIME_MS } from '@/theme';
 import {
   getSchools,
   createSchool as createSchoolApi,
+  createClass as createClassApi,
   type AdminSchool,
   type CreateSchoolData,
+  type CreateClassData,
 } from '@/features/admin/services/adminService';
 
 // ---------------------------------------------------------------------------
@@ -73,6 +75,21 @@ export function useAdminSchools() {
     [createMutation],
   );
 
+  // ── Create class mutation ──────────────────────────────────────────
+  const createClassMutation = useMutation({
+    mutationFn: ({ schoolId, data }: { schoolId: string; data: CreateClassData }) =>
+      createClassApi(schoolId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SCHOOLS_KEY });
+    },
+  });
+
+  const createClass = useCallback(
+    (schoolId: string, data: CreateClassData) =>
+      createClassMutation.mutateAsync({ schoolId, data }),
+    [createClassMutation],
+  );
+
   return {
     schools,
     isLoading,
@@ -83,5 +100,7 @@ export function useAdminSchools() {
     refetch,
     createSchool,
     isCreating: createMutation.isPending,
+    createClass,
+    isCreatingClass: createClassMutation.isPending,
   };
 }
