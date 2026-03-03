@@ -17,13 +17,15 @@ export type TeacherTabParamList = {
   dashboard: undefined;
   upload: undefined;
   notifications: undefined;
+  profile: undefined;
 };
 
 export type ParentTabParamList = {
   feed: undefined;
-  'photo/[id]': { id: string };
   orders: undefined;
   notifications: undefined;
+  profile: undefined;
+  'photo/[id]': { id: string };
 };
 
 export type AdminTabParamList = {
@@ -31,6 +33,7 @@ export type AdminTabParamList = {
   users: undefined;
   schools: undefined;
   notifications: undefined;
+  profile: undefined;
 };
 
 export function getRoleRoute(role: UserRole): string {

@@ -96,14 +96,14 @@ export default function LoginScreen() {
           Welcome to Hive
         </Text>
 
-        {/* Subtitle */}
+        {/* Subtitle: one login for teachers and parents (role from profile) */}
         <Text
           variant="body"
           color={colors.text.secondary}
           center
           style={styles.subtitle}
         >
-          Your child's precious moments, safely preserved
+          Sign in with your email — for teachers and parents
         </Text>
 
         {/* Email input */}

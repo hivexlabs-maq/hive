@@ -37,10 +37,12 @@ function tabIcon(
 /**
  * Parent tab layout.
  *
- * Three tabs:
- * 1. **Feed** -- photo feed for the parent's children.
- * 2. **Orders** -- order history (placeholder until Phase 9).
- * 3. **Notifications** -- notification centre (placeholder until Phase 11).
+ * Four tabs:
+ * 1. **Feed** — photo feed for the parent's children.
+ * 2. **Orders** — order history.
+ * 3. **Alerts** — notifications.
+ * 4. **Profile** — account info and sign out.
+ * (photo/[id] is a stack screen, hidden from tab bar.)
  */
 export default function ParentLayout() {
   return (
@@ -79,7 +81,16 @@ export default function ParentLayout() {
         }}
       />
 
-      {/* Hide the dynamic photo/[id] route from the tab bar */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: tabIcon('person', 'person-outline'),
+          tabBarAccessibilityLabel: 'Profile',
+        }}
+      />
+
+      {/* Hidden: detail screen when tapping a photo */}
       <Tabs.Screen
         name="photo/[id]"
         options={{

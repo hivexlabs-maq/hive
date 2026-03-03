@@ -10,12 +10,11 @@ import { TabBar } from '@/components/navigation';
 // ---------------------------------------------------------------------------
 
 /**
- * Teacher tab layout -- 3 tabs:
- * - Dashboard (grid icon)
- * - Upload (camera icon)
- * - Notifications (bell icon)
- *
- * Uses the custom `<TabBar>` component with animated pill indicator.
+ * Teacher tab layout — 4 tabs:
+ * - Dashboard
+ * - Upload
+ * - Notifications
+ * - Profile
  */
 export default function TeacherLayout() {
   return (
@@ -23,13 +22,14 @@ export default function TeacherLayout() {
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        tabBarActiveTintColor: colors.primary.amber,
+        tabBarInactiveTintColor: colors.text.tertiary,
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
           title: 'Dashboard',
-          tabBarLabel: 'Dashboard',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />
           ),
@@ -40,7 +40,6 @@ export default function TeacherLayout() {
         name="upload"
         options={{
           title: 'Upload',
-          tabBarLabel: 'Upload',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="camera-outline" size={size} color={color} />
           ),
@@ -50,12 +49,21 @@ export default function TeacherLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: 'Notifications',
-          tabBarLabel: 'Notifications',
+          title: 'Alerts',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="notifications-outline" size={size} color={color} />
           ),
           tabBarAccessibilityLabel: 'Notifications tab',
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+          tabBarAccessibilityLabel: 'Profile tab',
         }}
       />
     </Tabs>

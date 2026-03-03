@@ -23,10 +23,7 @@ function tabIcon(
 // ---------------------------------------------------------------------------
 
 /**
- * Admin tab layout with four tabs: Dashboard, Users, Schools, Notifications.
- *
- * Uses the custom `<TabBar>` component that features a spring-animated pill
- * indicator in the Hive design language.
+ * Admin tab layout — 5 tabs: Dashboard, Users, Schools, Notifications, Profile.
  */
 export default function AdminLayout() {
   return (
@@ -62,8 +59,15 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: 'Notifications',
+          title: 'Alerts',
           tabBarIcon: tabIcon('notifications-outline', 'notifications'),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: tabIcon('person-outline', 'person'),
         }}
       />
     </Tabs>
