@@ -27,8 +27,8 @@ export interface UseOTPReturn {
   lockoutRemaining: number;
   /** Human-readable error message, or null. */
   error: string | null;
-  /** Request a new OTP for `email`. */
-  sendOTP: (email: string) => Promise<boolean>;
+  /** Request a new OTP for `email`. Pass `role` for new signups so profile is created with that role. */
+  sendOTP: (email: string, role?: 'teacher' | 'parent') => Promise<boolean>;
   /** Verify `token` against the OTP sent to `email`. Returns true on success. */
   verifyOTP: (email: string, token: string) => Promise<boolean>;
   /** Call this to trigger a shake on the OTP input (returns a trigger callback). */
@@ -127,7 +127,7 @@ export function useOTP(): UseOTPReturn {
 
   // ── Send OTP ───────────────────────────────────────────────────────
   const sendOTP = useCallback(
-    async (email: string): Promise<boolean> => {
+    async (email: string, role?: 'teacher' | 'parent'): Promise<boolean> => {
       if (isLockedOut) {
         setError(`Too many attempts. Try again in ${lockoutRemaining}s.`);
         return false;
@@ -136,7 +136,7 @@ export function useOTP(): UseOTPReturn {
       try {
         setIsSending(true);
         setError(null);
-        await authService.sendOTP(email);
+        await authService.sendOTP(email, role);
         startResendCooldown();
         return true;
       } catch (err: unknown) {

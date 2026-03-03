@@ -9,7 +9,7 @@ export type RootStackParamList = {
 
 export type AuthStackParamList = {
   login: undefined;
-  'verify-otp': { email: string };
+  'verify-otp': { email: string; role?: 'teacher' | 'parent' };
   onboarding: undefined;
 };
 

@@ -12,31 +12,49 @@ const PILL_HEIGHT = 40;
 const PILL_BORDER_RADIUS = 20;
 const MIN_TAP_SIZE = 44;
 
+type TabRoute = BottomTabBarProps['state']['routes'][number];
+
+/** Tab bar hidden route names (detail screens, not actual tabs). */
+const HIDDEN_TAB_NAMES = ['photo/[id]'];
+
+function getVisibleRoutes(routes: TabRoute[]): TabRoute[] {
+  return routes.filter(
+    (route) => !HIDDEN_TAB_NAMES.includes(route.name as string),
+  );
+}
+
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const tabCount = state.routes.length;
+  const visibleRoutes = getVisibleRoutes(state.routes);
+  const tabCount = visibleRoutes.length;
 
   const pillX = useRef(new Animated.Value(0)).current;
   const tabWidthRef = useRef(0);
 
+  const currentRoute = state.routes[state.index];
+  const visibleIndex = visibleRoutes.findIndex(
+    (r: TabRoute) => r.key === currentRoute?.key,
+  );
+  const pillIndex = visibleIndex >= 0 ? visibleIndex : 0;
+
   useEffect(() => {
     if (tabWidthRef.current > 0) {
       Animated.spring(pillX, {
-        toValue: state.index * tabWidthRef.current,
+        toValue: pillIndex * tabWidthRef.current,
         damping: 20,
         stiffness: 200,
         useNativeDriver: true,
       }).start();
     }
-  }, [state.index, pillX]);
+  }, [pillIndex, pillX]);
 
   const onLayout = useCallback(
     (event: { nativeEvent: { layout: { width: number } } }) => {
       const containerWidth = event.nativeEvent.layout.width;
-      tabWidthRef.current = containerWidth / tabCount;
-      pillX.setValue(state.index * tabWidthRef.current);
+      tabWidthRef.current = tabCount > 0 ? containerWidth / tabCount : 0;
+      pillX.setValue(pillIndex * tabWidthRef.current);
     },
-    [tabCount, state.index, pillX],
+    [tabCount, pillIndex, pillX],
   );
 
   return (
@@ -47,24 +65,19 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       ]}
       onLayout={onLayout}
     >
-      {/* Animated pill indicator */}
       <Animated.View
-        style={[
-          styles.pill,
-          { transform: [{ translateX: pillX }] },
-        ]}
+        style={[styles.pill, { transform: [{ translateX: pillX }] }]}
       >
         <View style={styles.pillInner} />
       </Animated.View>
 
-      {/* Tab buttons */}
-      {state.routes.map((route, index) => {
+      {visibleRoutes.map((route: TabRoute, index: number) => {
         const { options } = descriptors[route.key];
         const label =
           typeof options.tabBarLabel === 'string'
             ? options.tabBarLabel
             : options.title ?? route.name;
-        const isFocused = state.index === index;
+        const isFocused = state.index === state.routes.indexOf(route);
 
         const onPress = () => {
           const event = navigation.emit({
@@ -73,7 +86,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             canPreventDefault: true,
           });
           if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
+            navigation.navigate(route.name as never, route.params as never);
           }
         };
 

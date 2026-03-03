@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, layout } from '@/theme';
 import { Text, Button, TextInput } from '@/components/ui';
@@ -11,18 +12,22 @@ import { useAuthStore } from '@/features/auth/stores/authStore';
 import { fetchUserProfile } from '@/features/auth/services/authService';
 import { getRoleRoute } from '@/types/navigation';
 
+type SignInRole = 'teacher' | 'parent';
+
 // ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
 
 /**
- * Login screen — collects the user's email and sends a one-time password.
+ * Login screen — choose Teacher or Parent, enter email, then receive OTP.
+ * New signups get a profile with the selected role (via Supabase trigger).
  */
 export default function LoginScreen() {
   const router = useRouter();
   const { isSending, error, sendOTP } = useOTP();
   const { user, role, setProfile, setRole } = useAuthStore();
 
+  const [signInAs, setSignInAs] = useState<SignInRole>('parent');
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | undefined>(undefined);
 
@@ -63,14 +68,14 @@ export default function LoginScreen() {
     const trimmed = email.trim();
     if (!validateEmail(trimmed)) return;
 
-    const success = await sendOTP(trimmed);
+    const success = await sendOTP(trimmed, signInAs);
     if (success) {
       router.push({
         pathname: '/(auth)/verify-otp',
-        params: { email: trimmed },
+        params: { email: trimmed, role: signInAs },
       } as never);
     }
-  }, [email, validateEmail, sendOTP, router]);
+  }, [email, signInAs, validateEmail, sendOTP, router]);
 
   // ── Render ─────────────────────────────────────────────────────────
   return (
@@ -96,15 +101,68 @@ export default function LoginScreen() {
           Welcome to Hive
         </Text>
 
-        {/* Subtitle: one login for teachers and parents (role from profile) */}
+        {/* Subtitle */}
         <Text
           variant="body"
           color={colors.text.secondary}
           center
           style={styles.subtitle}
         >
-          Sign in with your email — for teachers and parents
+          Sign in with your email
         </Text>
+
+        {/* Role selector: Teacher or Parent */}
+        <Text variant="bodyBold" style={styles.roleLabel}>
+          I am a
+        </Text>
+        <View style={styles.roleRow}>
+          <Pressable
+            onPress={() => setSignInAs('teacher')}
+            style={[
+              styles.roleOption,
+              signInAs === 'teacher' && styles.roleOptionSelected,
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: signInAs === 'teacher' }}
+            accessibilityLabel="Sign in as Teacher"
+          >
+            <Ionicons
+              name="school-outline"
+              size={22}
+              color={signInAs === 'teacher' ? colors.primary.amberDark : colors.text.secondary}
+            />
+            <Text
+              variant="body"
+              color={signInAs === 'teacher' ? colors.primary.amberDark : colors.text.secondary}
+              style={styles.roleOptionText}
+            >
+              Teacher
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setSignInAs('parent')}
+            style={[
+              styles.roleOption,
+              signInAs === 'parent' && styles.roleOptionSelected,
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: signInAs === 'parent' }}
+            accessibilityLabel="Sign in as Parent"
+          >
+            <Ionicons
+              name="people-outline"
+              size={22}
+              color={signInAs === 'parent' ? colors.primary.amberDark : colors.text.secondary}
+            />
+            <Text
+              variant="body"
+              color={signInAs === 'parent' ? colors.primary.amberDark : colors.text.secondary}
+              style={styles.roleOptionText}
+            >
+              Parent
+            </Text>
+          </Pressable>
+        </View>
 
         {/* Email input */}
         <TextInput
@@ -180,8 +238,38 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   subtitle: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
     paddingHorizontal: spacing.md,
+  },
+  roleLabel: {
+    alignSelf: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    width: '100%',
+    marginBottom: spacing.lg,
+  },
+  roleOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.md,
+    borderRadius: layout.inputRadius,
+    borderWidth: 2,
+    borderColor: colors.border.default,
+    backgroundColor: colors.background.surface,
+  },
+  roleOptionSelected: {
+    borderColor: colors.primary.amber,
+    backgroundColor: colors.primary.amberLight + '20',
+  },
+  roleOptionText: {
+    fontFamily: 'Nunito_600SemiBold',
   },
   input: {
     width: '100%',

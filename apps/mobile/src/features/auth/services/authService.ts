@@ -16,15 +16,18 @@ export interface ProfileWithRole {
 
 /**
  * Request Supabase to send an email OTP to `email`.
+ * For new signups, `role` is stored in user metadata so the DB trigger can create the profile with that role.
  * Throws on network / server errors.
  */
-export async function sendOTP(email: string): Promise<void> {
+export async function sendOTP(
+  email: string,
+  role?: 'teacher' | 'parent',
+): Promise<void> {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      // Don't require email confirmation — send 6-digit OTP directly
       shouldCreateUser: true,
-      data: {},
+      data: role ? { role } : {},
     },
   });
 

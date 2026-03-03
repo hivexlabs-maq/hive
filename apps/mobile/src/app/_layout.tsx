@@ -1,3 +1,4 @@
+import 'react-native-get-random-values'; // must be first so crypto.getRandomValues exists for uuid
 import React, { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';

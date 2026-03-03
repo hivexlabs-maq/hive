@@ -19,8 +19,9 @@ import { useOTP } from '@/features/auth/hooks/useOTP';
  */
 export default function VerifyOTPScreen() {
   const router = useRouter();
-  const { email } = useLocalSearchParams<{ email: string }>();
+  const { email, role } = useLocalSearchParams<{ email: string; role?: 'teacher' | 'parent' }>();
   const otpRef = useRef<OTPInputHandle>(null);
+  const signInRole = role === 'teacher' || role === 'parent' ? role : undefined;
 
   const {
     isVerifying,
@@ -60,9 +61,9 @@ export default function VerifyOTPScreen() {
 
   const handleResend = useCallback(async () => {
     if (!email || !canResend) return;
-    await sendOTP(email);
+    await sendOTP(email, signInRole);
     otpRef.current?.clear();
-  }, [email, canResend, sendOTP]);
+  }, [email, signInRole, canResend, sendOTP]);
 
   const handleBack = useCallback(() => {
     router.back();

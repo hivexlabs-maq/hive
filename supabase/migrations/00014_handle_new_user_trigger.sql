@@ -12,7 +12,15 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+    profile_role text;
 BEGIN
+    -- Role from signup (login screen: "I am a Teacher/Parent"). Only teacher or parent allowed; default parent.
+    profile_role := lower(trim(COALESCE(NEW.raw_user_meta_data->>'role', '')));
+    IF profile_role NOT IN ('teacher', 'parent') THEN
+        profile_role := 'parent';
+    END IF;
+
     INSERT INTO public.profiles (id, email, full_name, role)
     VALUES (
         NEW.id,
@@ -22,17 +30,16 @@ BEGIN
             NEW.raw_user_meta_data->>'name',
             split_part(COALESCE(NEW.email, ''), '@', 1)
         ),
-        'parent'
+        profile_role::text
     );
     RETURN NEW;
 EXCEPTION
     WHEN unique_violation THEN
-        -- Profile already exists (e.g. re-run), ignore
         RETURN NEW;
 END;
 $$;
 
-COMMENT ON FUNCTION public.handle_new_user() IS 'Creates a default profile (role=parent) when a new auth user is created.';
+COMMENT ON FUNCTION public.handle_new_user() IS 'Creates a profile when a new auth user is created. Role from signup (teacher/parent) or default parent.';
 
 -- Fire after insert on auth.users (Supabase Auth creates the user on signup/OTP).
 -- Drop first so this migration is safe to run again.

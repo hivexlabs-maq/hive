@@ -1035,7 +1035,14 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+    profile_role text;
 BEGIN
+    profile_role := lower(trim(COALESCE(NEW.raw_user_meta_data->>'role', '')));
+    IF profile_role NOT IN ('teacher', 'parent') THEN
+        profile_role := 'parent';
+    END IF;
+
     INSERT INTO public.profiles (id, email, full_name, role)
     VALUES (
         NEW.id,
@@ -1045,7 +1052,7 @@ BEGIN
             NEW.raw_user_meta_data->>'name',
             split_part(COALESCE(NEW.email, ''), '@', 1)
         ),
-        'parent'
+        profile_role::text
     );
     RETURN NEW;
 EXCEPTION
